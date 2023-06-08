@@ -1,0 +1,235 @@
+version: "1.0.0"
+services:
+  frontend-load-balancer:
+    build: ./frontend-load-balancer
+    ports:
+      - 80:80
+    depends_on:
+      - frontend-0
+      - frontend-1
+      - frontend-2
+
+  backend-load-balancer:
+    build: ./backend-load-balancer
+    ports:
+      - 81:80
+    depends_on:
+      - backend-0
+      - backend-1
+      - backend-2
+
+  # 3 instances of the frontend
+  frontend-0:
+    build: ./redditto-frontend
+    container_name: frontend-container-0
+    ports: 
+      - 3000:3000
+    environment:
+      REACT_APP_BACKEND_PORT: 81
+    stdin_open: true
+    tty: true
+
+  frontend-1:
+    build: ./redditto-frontend
+    container_name: frontend-container-1
+    ports: 
+      - 3001:3000
+    environment:
+      REACT_APP_BACKEND_PORT: 81
+    stdin_open: true
+    tty: true
+
+  frontend-2:
+    build: ./redditto-frontend
+    container_name: frontend-container-2
+    ports: 
+      - 3002:3000
+    environment:
+      REACT_APP_BACKEND_PORT: 81
+    stdin_open: true
+    tty: true
+
+  rabbitmq:
+    image: rabbitmq
+    container_name: rabbitmq-container
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+
+  worker-0:
+    build: ./backend/worker
+    container_name: worker-container-0
+    environment:
+      DB0_USER: user
+      DB0_PASSWORD: password
+      DB0: redditto
+      DB0_HOST: db-0
+      DB1_USER: user
+      DB1_PASSWORD: password
+      DB1: redditto
+      DB1_HOST: db-1
+      DB2_USER: user
+      DB2_PASSWORD: password
+      DB2: redditto
+      DB2_HOST: db-2
+      RABBITMQ_USER: user
+      RABBITMQ_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq-container
+      RABBITMQ_PORT: 5672
+    depends_on:
+      - rabbitmq
+      - backend-0
+      - backend-1
+      - backend-2
+
+  # 3 instances of the backend
+  backend-0:
+    build: ./backend
+    container_name: backend-container-0
+    ports: 
+      - 5000:5000
+    volumes:
+      - ./backend:/backend
+    environment:
+      CREATE_TABLE: 1
+      PYTHONUNBUFFERED: 1
+      DB0_USER: user
+      DB0_PASSWORD: password
+      DB0: redditto
+      DB0_HOST: db-0
+      DB1_USER: user
+      DB1_PASSWORD: password
+      DB1: redditto
+      DB1_HOST: db-1
+      DB2_USER: user
+      DB2_PASSWORD: password
+      DB2: redditto
+      DB2_HOST: db-2
+      RABBITMQ_USER: user
+      RABBITMQ_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq-container
+      RABBITMQ_PORT: 5672
+    links:
+      - db-0
+    depends_on:
+      - rabbitmq
+
+  backend-1:
+    build: ./backend
+    container_name: backend-container-1
+    ports: 
+      - 5001:5000
+    volumes:
+      - ./backend:/backend
+    environment:
+      CREATE_TABLE: 0
+      PYTHONUNBUFFERED: 1
+      DB0_USER: user
+      DB0_PASSWORD: password
+      DB0: redditto
+      DB0_HOST: db-0
+      DB1_USER: user
+      DB1_PASSWORD: password
+      DB1: redditto
+      DB1_HOST: db-1
+      DB2_USER: user
+      DB2_PASSWORD: password
+      DB2: redditto
+      DB2_HOST: db-2
+      RABBITMQ_USER: user
+      RABBITMQ_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq-container
+      RABBITMQ_PORT: 5672
+    links:
+      - db-1
+    depends_on:
+      - rabbitmq
+  
+  backend-2:
+    build: ./backend
+    container_name: backend-container-2
+    ports: 
+      - 5002:5000
+    volumes:
+      - ./backend:/backend
+    environment:
+      CREATE_TABLE: 0
+      PYTHONUNBUFFERED: 1
+      DB0_USER: user
+      DB0_PASSWORD: password
+      DB0: redditto
+      DB0_HOST: db-0
+      DB1_USER: user
+      DB1_PASSWORD: password
+      DB1: redditto
+      DB1_HOST: db-1
+      DB2_USER: user
+      DB2_PASSWORD: password
+      DB2: redditto
+      DB2_HOST: db-2
+      RABBITMQ_USER: user
+      RABBITMQ_PASSWORD: password
+      RABBITMQ_HOST: rabbitmq-container
+      RABBITMQ_PORT: 5672
+    links:
+      - db-2
+    depends_on:
+      - rabbitmq
+
+  # 3 database servers
+  db-0:
+    image: postgres
+    restart: always
+    hostname: db-0
+    container_name: db-container-0
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: redditto
+      POSTGRES_HOST: db-0
+      POSTGRES_PORT: 5432
+    volumes:
+      - db-volume-0:/var/lib/postgresql/data
+
+  db-1:
+    image: postgres
+    restart: always
+    hostname: db-1
+    container_name: db-container-1
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: redditto
+      POSTGRES_HOST: db-1
+      POSTGRES_PORT: 5432
+    volumes:
+      - db-volume-1:/var/lib/postgresql/data
+
+  db-2:
+    image: postgres
+    restart: always
+    hostname: db-2
+    container_name: db-container-2
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: redditto
+      POSTGRES_HOST: db-2
+      POSTGRES_PORT: 5432
+    volumes:
+      - db-volume-2:/var/lib/postgresql/data
+
+  # Web GUI to interact with the PostgreSQL databases
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 9090:8080
+
+volumes:
+  db-volume-0:
+  db-volume-1:
+  db-volume-2:
